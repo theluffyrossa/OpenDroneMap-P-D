@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: odm-app
+    ports:
+      - "8000:8000"
+    environment:
+      - ODM_NODE_HOST=nodeodm
+      - ODM_NODE_PORT=3000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DATABASE_URL=sqlite:///./backend/projects.db
+      - MAX_UPLOAD_SIZE=524288000
+      - MAX_IMAGES=50
+      - PROCESSING_TIMEOUT=1800
+      - SECRET_KEY=your-secret-key-change-in-production
+    volumes:
+      - ./backend/uploads:/app/backend/uploads
+      - ./results:/app/results
+      - ./logs:/app/logs
+      - ./backend/projects.db:/app/backend/projects.db
+    depends_on:
+      - nodeodm
+      - redis
+    networks:
+      - odm-network
+
+  nodeodm:
+    image: opendronemap/nodeodm:latest
+    container_name: odm-nodeodm
+    ports:
+      - "3000:3000"
+    volumes:
+      - nodeodm_data:/var/www/data
+      - ./results:/var/www/results
+    environment:
+      - NODE_ENV=production
+      - MAX_IMAGES=100
+      - MAX_PARALLEL_TASKS=2
+    command: --max_images 100 --max_concurrency 2
+    restart: unless-stopped
+    networks:
+      - odm-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: odm-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - odm-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: odm-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./results:/usr/share/nginx/html/results:ro
+    depends_on:
+      - app
+    networks:
+      - odm-network
+
+volumes:
+  nodeodm_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  odm-network:
+    driver: bridge
