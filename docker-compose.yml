@@ -9,11 +9,12 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - DOCKER_ENV=true
       - ODM_NODE_HOST=nodeodm
       - ODM_NODE_PORT=3000
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - DATABASE_URL=sqlite:///./backend/projects.db
+      - DATABASE_URL=sqlite:///./projects.db
       - MAX_UPLOAD_SIZE=524288000
       - MAX_IMAGES=50
       - PROCESSING_TIMEOUT=1800

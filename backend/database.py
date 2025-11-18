@@ -7,10 +7,14 @@ from typing import Generator
 from pathlib import Path
 
 # Ensure the database directory exists
-db_path = Path(__file__).parent / "projects.db"
-db_path.parent.mkdir(parents=True, exist_ok=True)
-
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
+if os.getenv("DOCKER_ENV"):
+    # In Docker, use a simple relative path
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./projects.db")
+else:
+    # Local development
+    db_path = Path(__file__).parent / "projects.db"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
 
 engine = create_engine(
     DATABASE_URL,

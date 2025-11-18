@@ -296,7 +296,7 @@ async def list_projects(
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    projects = db.query(Project).offset(skip).limit(limit).order_by(Project.created_at.desc()).all()
+    projects = db.query(Project).order_by(Project.created_at.desc()).offset(skip).limit(limit).all()
     return projects
 
 
