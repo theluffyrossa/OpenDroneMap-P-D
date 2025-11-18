@@ -131,7 +131,36 @@ class ODMProcessor:
 
                 try:
                     info = task.info()
-                    status = info.status
+
+                    # Check if status is a dict with error code (NodeODM API format)
+                    if hasattr(info, 'status') and isinstance(info.status, dict):
+                        status_code = info.status.get('code', 0)
+                        error_message = info.status.get('errorMessage', '')
+
+                        # Status codes: 10=QUEUED, 20=RUNNING, 30=FAILED, 40=COMPLETED, 50=CANCELED
+                        if status_code == 30:  # FAILED
+                            logger.error(f"Task {task.uuid} failed with error: {error_message}")
+                            await self._update_project_status(
+                                project_id,
+                                ProcessingStatus.FAILED,
+                                error_message=error_message or "Processing failed"
+                            )
+                            break
+                        elif status_code == 40:  # COMPLETED
+                            logger.info(f"Task {task.uuid} completed successfully")
+                            await self._download_results(project_id, task)
+                            break
+                        elif status_code == 50:  # CANCELED
+                            logger.info(f"Task {task.uuid} was cancelled")
+                            await self._update_project_status(
+                                project_id,
+                                ProcessingStatus.CANCELLED,
+                                error_message="Task cancelled"
+                            )
+                            break
+
+                    # Fallback to string status for compatibility
+                    status = info.status if isinstance(info.status, str) else "running"
                     progress = info.progress if hasattr(info, 'progress') else 0
 
                     if progress != last_progress:
