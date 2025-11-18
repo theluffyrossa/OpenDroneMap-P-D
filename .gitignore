@@ -85,3 +85,7 @@ htmlcov/
 *.swp
 temp/
 tmp/
+
+# Sample images and test files
+sample_images/
+test_upload.html

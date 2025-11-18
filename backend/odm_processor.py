@@ -52,12 +52,18 @@ class ODMProcessor:
                 )
                 return
 
-            uploads_dir = Path("backend/uploads") / task_id / "images"
+            # Adjust path for Docker environment
+            if os.getenv("DOCKER_ENV"):
+                uploads_dir = Path("/app/backend/uploads") / task_id / "images"
+            else:
+                uploads_dir = Path("backend/uploads") / task_id / "images"
+
             if not uploads_dir.exists():
+                logger.error(f"Upload directory not found: {uploads_dir}")
                 await self._update_project_status(
                     task_id,
                     ProcessingStatus.FAILED,
-                    error_message="Image files not found"
+                    error_message=f"Image files not found at {uploads_dir}"
                 )
                 return
 
@@ -177,7 +183,12 @@ class ODMProcessor:
 
     async def _download_results(self, project_id: str, task):
         try:
-            results_dir = Path("results") / project_id
+            # Adjust path for Docker environment
+            if os.getenv("DOCKER_ENV"):
+                results_dir = Path("/app/results") / project_id
+            else:
+                results_dir = Path("results") / project_id
+
             results_dir.mkdir(parents=True, exist_ok=True)
 
             download_paths = {}

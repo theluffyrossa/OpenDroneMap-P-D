@@ -66,15 +66,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-frontend_path = Path(__file__).parent.parent / "frontend"
+# Adjust frontend path for Docker environment
+if os.getenv("DOCKER_ENV"):
+    frontend_path = Path("/app/frontend")
+else:
+    frontend_path = Path(__file__).parent.parent / "frontend"
+
 if frontend_path.exists():
+    # Mount all frontend files to serve correctly
     app.mount("/static", StaticFiles(directory=str(frontend_path)), name="static")
 
-uploads_path = Path(__file__).parent / "uploads"
-uploads_path.mkdir(exist_ok=True)
+    # Mount individual directories for direct access
+    css_path = frontend_path / "css"
+    js_path = frontend_path / "js"
+    assets_path = frontend_path / "assets"
 
-results_path = Path(__file__).parent.parent / "results"
-results_path.mkdir(exist_ok=True)
+    if css_path.exists():
+        app.mount("/css", StaticFiles(directory=str(css_path)), name="css")
+    if js_path.exists():
+        app.mount("/js", StaticFiles(directory=str(js_path)), name="js")
+    if assets_path.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_path)), name="assets")
+
+# Adjust paths for Docker environment
+if os.getenv("DOCKER_ENV"):
+    uploads_path = Path("/app/backend/uploads")
+    results_path = Path("/app/results")
+else:
+    uploads_path = Path(__file__).parent / "uploads"
+    results_path = Path(__file__).parent.parent / "results"
+
+uploads_path.mkdir(exist_ok=True, parents=True)
+results_path.mkdir(exist_ok=True, parents=True)
 
 active_websockets: Dict[str, List[WebSocket]] = {}
 
@@ -254,7 +277,7 @@ async def get_processing_status(task_id: str, db: Session = Depends(get_db)):
     return StatusResponse(
         task_id=task_id,
         status=project.status,
-        progress=project.progress,
+        progress=int(project.progress) if project.progress is not None else 0,
         message=project.error_message if project.status == ProcessingStatus.FAILED else f"Processing: {project.progress}%",
         created_at=project.created_at,
         updated_at=project.updated_at,
